@@ -4,6 +4,15 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import ApiService from '../services/api';
 import './DashboardScreen.css';
 
+interface Transaction {
+  id: number;
+  amount: number;
+  receiver: string;
+  status: 'success' | 'pending' | 'failed';
+  method: string;
+  createdAt: string;
+}
+
 interface DashboardScreenProps {
   navigation: any;
 }
@@ -16,14 +25,7 @@ interface Stats {
   revenueTrend: Array<{ date: string; revenue: number }>;
   paymentMethods: Array<{ method: string; count: number; percentage: number }>;
   statusBreakdown: Array<{ status: string; count: number; amount: number }>;
-  recentTransactions: Array<{
-    id: number;
-    amount: number;
-    receiver: string;
-    status: 'success' | 'failed' | 'pending';
-    method: string;
-    createdAt: string;
-  }>;
+  recentTransactions: Array<Transaction>;
 }
 
 interface QuickStats {
@@ -36,10 +38,72 @@ interface QuickStats {
 export default function DashboardScreen({ navigation }: DashboardScreenProps) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDateRange, setSelectedDateRange] = useState('7d');
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  // Sample transactions fallback (same as in TransactionListScreen)
+  const sampleTransactions: Transaction[] = [
+    { id: 1, amount: 2500, receiver: 'John Doe', status: 'success', method: 'Credit Card', createdAt: '2024-01-15T10:30:00.000Z' },
+    { id: 2, amount: 1800, receiver: 'Jane Smith', status: 'pending', method: 'UPI', createdAt: '2024-01-16T14:20:00.000Z' },
+    { id: 3, amount: 3200, receiver: 'Bob Johnson', status: 'success', method: 'Net Banking', createdAt: '2024-01-17T09:15:00.000Z' },
+    { id: 4, amount: 950, receiver: 'Alice Brown', status: 'failed', method: 'Wallet', createdAt: '2024-01-18T16:45:00.000Z' },
+    { id: 5, amount: 4500, receiver: 'Charlie Wilson', status: 'success', method: 'UPI', createdAt: '2024-01-19T11:30:00.000Z' },
+    { id: 6, amount: 2200, receiver: 'Diana Prince', status: 'pending', method: 'Credit Card', createdAt: '2024-01-20T13:20:00.000Z' },
+  ];
+
+  const loadTransactions = async () => {
+    try {
+      // Always try to load from localStorage first (for newly added payments)
+      let localTransactions: Transaction[] = [];
+      try {
+        const storedTransactions = localStorage.getItem('transactions');
+        if (storedTransactions) {
+          const parsed = JSON.parse(storedTransactions);
+          if (Array.isArray(parsed)) {
+            localTransactions = parsed;
+            console.log('Dashboard - Loaded from localStorage:', localTransactions.length, 'transactions');
+          }
+        }
+      } catch (storageError) {
+        console.warn('Dashboard - Error loading from local storage:', storageError);
+      }
+
+      // Try to load from API
+      try {
+        const response = await ApiService.getTransactions({}, 1, 10); // Get first 10 transactions
+        const apiTransactions: Transaction[] = response.data || [];
+        
+        // Combine localStorage transactions with API transactions
+        const combinedTransactions = [...localTransactions];
+        apiTransactions.forEach((apiTransaction: Transaction) => {
+          if (!localTransactions.find(local => local.id === apiTransaction.id)) {
+            combinedTransactions.push(apiTransaction);
+          }
+        });
+        
+        setRecentTransactions(combinedTransactions.slice(0, 5)); // Show only top 5
+        console.log('Dashboard - Combined transactions:', combinedTransactions.length, 'total');
+      } catch (apiError) {
+        console.error('Dashboard - API call failed:', apiError);
+        
+        // If API fails, use localStorage + sample data
+        const fallbackTransactions = [...localTransactions, ...sampleTransactions]
+          .filter((transaction, index, arr) => 
+            arr.findIndex(t => t.id === transaction.id) === index
+          ) // Remove duplicates
+          .slice(0, 5); // Show only top 5
+        
+        setRecentTransactions(fallbackTransactions);
+        console.log('Dashboard - Using fallback data:', fallbackTransactions.length, 'transactions');
+      }
+    } catch (error) {
+      console.error('Dashboard - Error loading transactions:', error);
+      setRecentTransactions(sampleTransactions.slice(0, 5));
+    }
+  };
 
   const loadStats = async () => {
     try {
@@ -53,7 +117,20 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
       setLastUpdated(new Date());
     } catch (error: any) {
       console.error('Error loading stats:', error);
-      alert('Failed to load dashboard data');
+      // Don't show alert for stats failure, just log it
+      console.warn('Failed to load dashboard stats, using fallback data');
+    }
+  };
+
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        loadStats(),
+        loadTransactions()
+      ]);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -61,15 +138,25 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
   };
 
   useEffect(() => {
-    loadStats();
+    loadAllData();
     // Auto-refresh every 5 minutes
-    const interval = setInterval(loadStats, 5 * 60 * 1000);
+    const interval = setInterval(loadAllData, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
+  // Add focus listener to refresh when navigating back
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('Dashboard focused - refreshing transactions');
+      loadTransactions();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   const onRefresh = () => {
     setRefreshing(true);
-    loadStats();
+    loadAllData();
   };
 
   const handleLogout = async () => {
@@ -81,7 +168,7 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
     }
   };
 
-  const chartData = stats?.revenueTrend.map(item => ({
+  const chartData = stats?.revenueTrend?.map(item => ({
     date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     revenue: item.revenue
   })) || [];
@@ -281,7 +368,7 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
         )}
       </div>
 
-      {/* Recent Transactions - Always show this section */}
+      {/* Recent Transactions - Show actual transactions from localStorage + API */}
       <div className="recent-transactions">
         <div className="section-header">
           <h2>Recent Transactions</h2>
@@ -293,8 +380,8 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
           </button>
         </div>
         <div className="transactions-list">
-          {stats?.recentTransactions && stats.recentTransactions.length > 0 ? (
-            stats.recentTransactions.slice(0, 5).map((transaction) => (
+          {recentTransactions.length > 0 ? (
+            recentTransactions.map((transaction) => (
               <div key={transaction.id} className="transaction-item">
                 <div className="transaction-info">
                   <div className="transaction-receiver">{transaction.receiver}</div>
@@ -315,54 +402,15 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
               </div>
             ))
           ) : (
-            // Show sample transactions if no data
-            <>
-              <div className="transaction-item">
-                <div className="transaction-info">
-                  <div className="transaction-receiver">John Doe</div>
-                  <div className="transaction-method">Credit Card</div>
-                  <div className="transaction-date">{new Date().toLocaleDateString()}</div>
-                </div>
-                <div className="transaction-amount">₹2,500.00</div>
-                <div className="transaction-status" style={{ backgroundColor: '#34C759' }}>success</div>
-              </div>
-              <div className="transaction-item">
-                <div className="transaction-info">
-                  <div className="transaction-receiver">Jane Smith</div>
-                  <div className="transaction-method">UPI</div>
-                  <div className="transaction-date">{new Date(Date.now() - 86400000).toLocaleDateString()}</div>
-                </div>
-                <div className="transaction-amount">₹1,800.00</div>
-                <div className="transaction-status" style={{ backgroundColor: '#FF9500' }}>pending</div>
-              </div>
-              <div className="transaction-item">
-                <div className="transaction-info">
-                  <div className="transaction-receiver">Bob Johnson</div>
-                  <div className="transaction-method">Net Banking</div>
-                  <div className="transaction-date">{new Date(Date.now() - 172800000).toLocaleDateString()}</div>
-                </div>
-                <div className="transaction-amount">₹3,200.00</div>
-                <div className="transaction-status" style={{ backgroundColor: '#34C759' }}>success</div>
-              </div>
-              <div className="transaction-item">
-                <div className="transaction-info">
-                  <div className="transaction-receiver">Alice Brown</div>
-                  <div className="transaction-method">Wallet</div>
-                  <div className="transaction-date">{new Date(Date.now() - 259200000).toLocaleDateString()}</div>
-                </div>
-                <div className="transaction-amount">₹950.00</div>
-                <div className="transaction-status" style={{ backgroundColor: '#FF3B30' }}>failed</div>
-              </div>
-              <div className="transaction-item">
-                <div className="transaction-info">
-                  <div className="transaction-receiver">Mike Wilson</div>
-                  <div className="transaction-method">Credit Card</div>
-                  <div className="transaction-date">{new Date(Date.now() - 345600000).toLocaleDateString()}</div>
-                </div>
-                <div className="transaction-amount">₹4,750.00</div>
-                <div className="transaction-status" style={{ backgroundColor: '#34C759' }}>success</div>
-              </div>
-            </>
+            <div className="no-transactions">
+              <p>No recent transactions found.</p>
+              <button 
+                className="add-payment-btn"
+                onClick={() => navigation.navigate('AddPayment')}
+              >
+                Add Your First Payment
+              </button>
+            </div>
           )}
         </div>
       </div>

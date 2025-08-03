@@ -53,14 +53,77 @@ export default function TransactionListScreen({ navigation }: TransactionListScr
     setCurrentPage(1);
   }, [filters]);
 
+  // Add listener for when new payments are added (if using navigation focus)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      // Refresh transactions when screen comes into focus
+      loadTransactions();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  // Handle route params for refresh
+  useEffect(() => {
+    if (navigation.getState()?.routes) {
+      const currentRoute = navigation.getState().routes[navigation.getState().index];
+      if (currentRoute?.params?.shouldRefresh) {
+        loadTransactions();
+        // Clear the param to avoid repeated refreshes
+        navigation.setParams({ shouldRefresh: false });
+      }
+    }
+  }, [navigation]);
+
   const loadTransactions = async () => {
     try {
       setLoading(true);
-      const response = await ApiService.getTransactions(filters, currentPage, itemsPerPage);
-      setAllTransactions(response.data || []);
+      
+      // Always try to load from localStorage first (for newly added payments)
+      let localTransactions: Transaction[] = [];
+      try {
+        const storedTransactions = localStorage.getItem('transactions');
+        if (storedTransactions) {
+          const parsed = JSON.parse(storedTransactions);
+          if (Array.isArray(parsed)) {
+            localTransactions = parsed;
+            console.log('Loaded from localStorage:', localTransactions.length, 'transactions');
+          }
+        }
+      } catch (storageError) {
+        console.warn('Error loading from local storage:', storageError);
+      }
+
+      // Try to load from API
+      try {
+        const response = await ApiService.getTransactions(filters, currentPage, itemsPerPage);
+        const apiTransactions: Transaction[] = response.data || [];
+        
+        // Combine localStorage transactions with API transactions
+        // Remove duplicates by ID and put localStorage transactions first
+        const combinedTransactions = [...localTransactions];
+        apiTransactions.forEach((apiTransaction: Transaction) => {
+          if (!localTransactions.find(local => local.id === apiTransaction.id)) {
+            combinedTransactions.push(apiTransaction);
+          }
+        });
+        
+        setAllTransactions(combinedTransactions);
+        console.log('Combined transactions:', combinedTransactions.length, 'total');
+      } catch (apiError) {
+        console.error('API call failed:', apiError);
+        
+        // If API fails, use localStorage + sample data
+        const fallbackTransactions = [...localTransactions, ...sampleTransactions]
+          .filter((transaction, index, arr) => 
+            arr.findIndex(t => t.id === transaction.id) === index
+          ); // Remove duplicates
+        
+        setAllTransactions(fallbackTransactions);
+        console.log('Using fallback data:', fallbackTransactions.length, 'transactions');
+      }
     } catch (error) {
       console.error('Error loading transactions:', error);
-      // Load sample data if API fails
       setAllTransactions(sampleTransactions);
     } finally {
       setLoading(false);
@@ -124,6 +187,10 @@ export default function TransactionListScreen({ navigation }: TransactionListScr
     }));
   };
 
+  const handleRefresh = async () => {
+    await loadTransactions();
+  };
+
   const clearFilters = () => {
     setFilters({
       status: '',
@@ -141,6 +208,10 @@ export default function TransactionListScreen({ navigation }: TransactionListScr
       default: return '#8E8E93';
     }
   };
+  const handleClearLocalStorage = () => {
+    localStorage.clear();
+    alert("Local storage cleared!");
+  };
 
   const formatCurrency = (amount: number) => `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
@@ -153,9 +224,17 @@ export default function TransactionListScreen({ navigation }: TransactionListScr
           ← Back
         </button>
         <h1>All Transactions</h1>
-        <button className="export-button" onClick={() => ApiService.exportTransactions(filters)}>
-          📊 Export CSV
-        </button>
+        <div className="header-actions">
+          <button className="refresh-button" onClick={handleRefresh} disabled={loading}>
+            🔄 Refresh
+          </button>
+          <button className="clear-storage-button" onClick={handleClearLocalStorage}>
+            🗑️ Clear Local
+          </button>
+          <button className="export-button" onClick={() => ApiService.exportTransactions(filters)}>
+            📊 Export CSV
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -215,7 +294,7 @@ export default function TransactionListScreen({ navigation }: TransactionListScr
       </div>
 
       {/* Transaction List */}
-      <div className="transactions-container">
+      <div className="transactions-container scrollable">
         {loading ? (
           <div className="loading">Loading transactions...</div>
         ) : currentTransactions.length === 0 ? (
@@ -245,7 +324,14 @@ export default function TransactionListScreen({ navigation }: TransactionListScr
                 </div>
                 <button 
                   className="view-details-btn"
-                  onClick={() => navigation.navigate('TransactionDetails', { id: transaction.id })}
+                  onClick={() => {
+                    console.log('Navigating to transaction details:', transaction.id);
+                    if (navigation && navigation.navigate) {
+                      navigation.navigate('TransactionDetails', { transactionId: transaction.id });
+                    } else {
+                      alert(`View details for Transaction #${transaction.id}`);
+                    }
+                  }}
                 >
                   View Details
                 </button>

@@ -286,3 +286,304 @@
     min-width: 100%;
   }
 }
+
+/* Add these styles to your existing TransactionListScreen.css */
+
+.transaction-list-container {
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 20px;
+}
+
+.transactions-container.scrollable {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.transactions-container.scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.transactions-container.scrollable::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.transactions-container.scrollable::-webkit-scrollbar-thumb {
+  background: #007AFF;
+  border-radius: 3px;
+}
+
+.transactions-container.scrollable::-webkit-scrollbar-thumb:hover {
+  background: #0056CC;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.refresh-button {
+  padding: 10px 20px;
+  border: 2px solid #34C759;
+  background: white;
+  color: #34C759;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background: #34C759;
+  color: white;
+}
+
+.refresh-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clear-filters-btn {
+  padding: 10px 20px;
+  border: 2px solid #FF3B30;
+  background: white;
+  color: #FF3B30;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.clear-filters-btn:hover:not(:disabled) {
+  background: #FF3B30;
+  color: white;
+}
+
+.clear-filters-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #ccc;
+  color: #ccc;
+}
+
+.results-summary {
+  background: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.results-summary p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.no-transactions {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.no-transactions p {
+  margin: 0 0 20px 0;
+  color: #666;
+  font-size: 16px;
+}
+
+.no-transactions button {
+  padding: 10px 20px;
+  border: 2px solid #007AFF;
+  background: white;
+  color: #007AFF;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.no-transactions button:hover {
+  background: #007AFF;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .filters-section {
+    flex-direction: column;
+  }
+  
+  .filters-section select, 
+  .filters-section input,  
+  .clear-filters-btn {
+    min-width: 100%;
+  }
+}
+
+
+.transaction-list-container {
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 20px;
+}
+
+.transactions-container.scrollable {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.transactions-container.scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.transactions-container.scrollable::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.transactions-container.scrollable::-webkit-scrollbar-thumb {
+  background: #007AFF;
+  border-radius: 3px;
+}
+
+.transactions-container.scrollable::-webkit-scrollbar-thumb:hover {
+  background: #0056CC;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.refresh-button {
+  padding: 10px 20px;
+  border: 2px solid #34C759;
+  background: white;
+  color: #34C759;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background: #34C759;
+  color: white;
+}
+
+.refresh-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clear-storage-button {
+  padding: 10px 20px;
+  border: 2px solid #FF9500;
+  background: white;
+  color: #FF9500;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.clear-storage-button:hover {
+  background: #FF9500;
+  color: white;
+}
+
+.clear-filters-btn {
+  padding: 10px 20px;
+  border: 2px solid #FF3B30;
+  background: white;
+  color: #FF3B30;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.clear-filters-btn:hover:not(:disabled) {
+  background: #FF3B30;
+  color: white;
+}
+
+.clear-filters-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #ccc;
+  color: #ccc;
+}
+
+.results-summary {
+  background: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.results-summary p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.no-transactions {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.no-transactions p {
+  margin: 0 0 20px 0;
+  color: #666;
+  font-size: 16px;
+}
+
+.no-transactions button {
+  padding: 10px 20px;
+  border: 2px solid #007AFF;
+  background: white;
+  color: #007AFF;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.no-transactions button:hover {
+  background: #007AFF;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .filters-section {
+    flex-direction: column;
+  }
+  
+  .filters-section select, 
+  .filters-section input,  
+  .clear-filters-btn {
+    min-width: 100%;
+  }
+}
