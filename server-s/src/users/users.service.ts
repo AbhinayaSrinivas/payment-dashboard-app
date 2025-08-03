@@ -1,9 +1,11 @@
-// src/users/users.service.ts
-import { Injectable } from '@nestjs/common';
+// src/users/users.service.ts - Updated with seed method
+import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { User } from './entities/user.entity';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UserRole } from './enums/user-role.enum';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
@@ -14,61 +16,114 @@ export class UsersService {
 
   async findAll(): Promise<User[]> {
     return this.usersRepository.find({
-      select: ['id', 'username', 'role', 'isActive', 'createdAt'],
+      select: ['id', 'username', 'role', 'createdAt', 'updatedAt'], // Exclude password
     });
   }
 
-  async findOne(id: number): Promise<User | null> {
-    return this.usersRepository.findOne({
-      where: { id },
-      select: ['id', 'username', 'role', 'isActive', 'createdAt'],
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    // Check if user already exists
+    const existingUser = await this.usersRepository.findOne({
+      where: { username: createUserDto.username },
     });
-  }
 
-  async create(userData: { username: string; password: string; role?: UserRole }): Promise<User> {
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
-    
+    if (existingUser) {
+      throw new ConflictException('Username already exists');
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+
+    // Create user with default role if not provided
     const user = this.usersRepository.create({
-      username: userData.username,
+      ...createUserDto,
       password: hashedPassword,
-      role: userData.role || UserRole.VIEWER,
+      role: createUserDto.role || UserRole.VIEWER,
     });
 
     const savedUser = await this.usersRepository.save(user);
+    
+    // Return user without password
     const { password, ...result } = savedUser;
     return result as User;
   }
 
+  async findOne(id: number): Promise<User | null> {
+    return this.usersRepository.findOne({ 
+      where: { id },
+      select: ['id', 'username', 'role', 'createdAt', 'updatedAt']
+    });
+  }
+
+  async findByUsername(username: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { username } });
+  }
+
+  // NEW: Seed method for creating default users
   async seedDefaultUsers(): Promise<void> {
-    const adminExists = await this.usersRepository.findOne({
-      where: { username: 'admin' },
-    });
+    console.log('🔧 Seeding default users...');
 
-    if (!adminExists) {
-      await this.create({
+    // Check if users already exist
+    const userCount = await this.usersRepository.count();
+    if (userCount > 0) {
+      console.log('Users already exist, skipping user seeding');
+      return;
+    }
+
+    const defaultUsers = [
+      {
         username: 'admin',
-        password: 'admin123',
+        password: 'admin123', // This will be hashed
         role: UserRole.ADMIN,
-      });
-      console.log('Default admin user created: admin/admin123');
+      },
+      {
+        username: 'viewer',
+        password: 'viewer123', // This will be hashed
+        role: UserRole.VIEWER,
+      },
+      {
+        username: 'demo_admin',
+        password: 'demo123',
+        role: UserRole.ADMIN,
+      },
+      {
+        username: 'test_user',
+        password: 'test123',
+        role: UserRole.VIEWER,
+      },
+    ];
+
+    for (const userData of defaultUsers) {
+      try {
+        // Hash password
+        const hashedPassword = await bcrypt.hash(userData.password, 10);
+
+        // Create and save user
+        const user = this.usersRepository.create({
+          username: userData.username,
+          password: hashedPassword,
+          role: userData.role,
+        });
+
+        await this.usersRepository.save(user);
+        console.log(`✅ Created user: ${userData.username} (${userData.role})`);
+      } catch (error) {
+        console.error(`❌ Failed to create user ${userData.username}:`, error.message);
+      }
     }
 
-    const viewerExists = await this.usersRepository.findOne({
-      where: { username: 'viewer' },
+    console.log('✅ Default users seeded successfully');
+  }
+
+  // Helper method to create a user without duplicate checking (for seeding)
+  async createSeedUser(username: string, password: string, role: UserRole): Promise<User> {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const user = this.usersRepository.create({
+      username,
+      password: hashedPassword,
+      role,
     });
 
-    if (!viewerExists) {
-      await this.create({
-        username: 'viewer',
-        password: 'viewer123',
-        role: UserRole.VIEWER,
-      });
-      console.log('Default viewer user created: viewer/viewer123');
-    }
+    return this.usersRepository.save(user);
   }
 }
-
-// src/users/users.controller.ts
-
-
-// src/users/dto/create-user.dto.ts

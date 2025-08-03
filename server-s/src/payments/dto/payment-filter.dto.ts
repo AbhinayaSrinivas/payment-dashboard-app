@@ -1,14 +1,18 @@
-import { IsOptional, IsEnum, IsDateString } from 'class-validator';
-import { PaymentStatus, PaymentMethod } from '../entities/payment.entity';
+import { IsOptional, IsString, IsEnum, IsDateString } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class PaymentFilterDto {
   @IsOptional()
-  @IsEnum(PaymentStatus)
-  status?: PaymentStatus;
+  @IsString()
+  receiver?: string;
 
   @IsOptional()
-  @IsEnum(PaymentMethod)
-  method?: PaymentMethod;
+  @IsEnum(['success', 'pending', 'failed'])
+  status?: 'success' | 'pending' | 'failed';
+
+  @IsOptional()
+  @IsString()
+  method?: string;
 
   @IsOptional()
   @IsDateString()
@@ -17,4 +21,12 @@ export class PaymentFilterDto {
   @IsOptional()
   @IsDateString()
   endDate?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => parseFloat(value))
+  minAmount?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => parseFloat(value))
+  maxAmount?: number;
 }

@@ -1,5 +1,5 @@
-// src/payments/entities/payment.entity.ts
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+// src/payments/entities/payment.entity.ts - Make sure these enums exist
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 export enum PaymentStatus {
   SUCCESS = 'success',
@@ -8,9 +8,9 @@ export enum PaymentStatus {
 }
 
 export enum PaymentMethod {
+  UPI = 'upi',
   CREDIT_CARD = 'credit_card',
   DEBIT_CARD = 'debit_card',
-  UPI = 'upi',
   NET_BANKING = 'net_banking',
   WALLET = 'wallet',
 }
@@ -40,9 +40,9 @@ export class Payment {
   method: PaymentMethod;
 
   @Column({ nullable: true })
-  description: string;
+  description?: string;
 
-  @Column({ nullable: true })
+  @Column({ unique: true })
   transactionId: string;
 
   @CreateDateColumn()
@@ -51,3 +51,8 @@ export class Payment {
   @UpdateDateColumn()
   updatedAt: Date;
 }
+
+// Alternative: If you prefer separate enum files
+
+
+// src/payments/enums/payment-method.enum.ts
